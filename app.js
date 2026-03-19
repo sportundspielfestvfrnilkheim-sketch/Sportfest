@@ -1,16 +1,25 @@
 // app.js – Sportfest Hauptlogik
 
 // ===== INIT =====
-window.addEventListener('DOMContentLoaded', async () => {
+window.addEventListener('load', async () => {
+  // Warte kurz bis Firebase-Skripte sicher initialisiert sind
+  await new Promise(resolve => setTimeout(resolve, 300));
+
   const cfg = getStoredConfig();
   if (!cfg || !cfg.apiKey) {
     showScreen('screen-setup');
     return;
   }
+
+  // Firebase neu initialisieren falls nötig
   if (!window.firebaseReady) {
-    showScreen('screen-setup');
-    return;
+    const ok = initFirebase(cfg);
+    if (!ok) {
+      showScreen('screen-setup');
+      return;
+    }
   }
+
   // Check URL params for deep links
   const params = new URLSearchParams(window.location.search);
   const riegeToken = params.get('riege');
