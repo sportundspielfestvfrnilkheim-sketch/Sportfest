@@ -4,19 +4,144 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sportfest</title>
-  <link rel="stylesheet" href="style.css">
-  <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-  <!-- QR Code library -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --primary: #2563eb; --primary-dark: #1d4ed8; --primary-light: #dbeafe;
+      --success: #16a34a; --success-light: #dcfce7;
+      --danger: #dc2626; --danger-light: #fee2e2;
+      --warning: #d97706; --warning-light: #fef3c7;
+      --gray-50: #f9fafb; --gray-100: #f3f4f6; --gray-200: #e5e7eb;
+      --gray-300: #d1d5db; --gray-500: #6b7280; --gray-700: #374151; --gray-900: #111827;
+      --radius: 12px; --shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--gray-50); color: var(--gray-900); min-height: 100vh; font-size: 16px; line-height: 1.5; }
+    .screen { display: none; min-height: 100vh; }
+    .screen.active { display: block; }
+
+    /* Loading */
+    #screen-loading { display: flex; align-items: center; justify-content: center; background: white; }
+    .loading-inner { text-align: center; color: var(--gray-500); }
+    .spinner { width: 40px; height: 40px; border: 3px solid var(--gray-200); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Home */
+    #screen-home { background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 50%, #3b82f6 100%); display: flex; align-items: center; justify-content: center; }
+    .home-container { text-align: center; padding: 2rem; }
+    .home-logo { font-size: 64px; margin-bottom: 12px; }
+    .home-title { color: white; font-size: 32px; font-weight: 700; margin-bottom: 40px; }
+    .home-buttons { display: flex; flex-direction: column; gap: 12px; max-width: 280px; margin: 0 auto; }
+    .home-btn { background: rgba(255,255,255,0.15); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.25); color: white; border-radius: var(--radius); padding: 16px 20px; font-size: 16px; cursor: pointer; display: flex; align-items: center; gap: 12px; transition: background 0.2s; text-align: left; }
+    .home-btn:hover { background: rgba(255,255,255,0.25); }
+    .home-btn-icon { font-size: 24px; }
+    .home-btn-label { font-weight: 500; }
+
+    /* Card */
+    .card { background: white; border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); max-width: 480px; margin: 24px auto; }
+
+    /* Typography */
+    h1 { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
+    h2 { font-size: 20px; font-weight: 700; margin-bottom: 16px; }
+    h3 { font-size: 17px; font-weight: 600; }
+    h4 { font-size: 15px; font-weight: 600; color: var(--gray-700); margin-bottom: 12px; }
+    .subtitle { color: var(--gray-500); margin-bottom: 20px; font-size: 14px; }
+    .logo { font-size: 48px; text-align: center; margin-bottom: 8px; }
+
+    /* Forms */
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 13px; font-weight: 600; color: var(--gray-700); margin-bottom: 6px; }
+    .form-group input, .form-group select { width: 100%; padding: 10px 14px; border: 1.5px solid var(--gray-200); border-radius: 8px; font-size: 15px; color: var(--gray-900); background: white; transition: border-color 0.15s; outline: none; -webkit-appearance: none; }
+    .form-group input:focus, .form-group select:focus { border-color: var(--primary); }
+    .radio-group { display: flex; gap: 16px; padding: 4px 0; }
+    .radio-label { display: flex; align-items: center; gap: 6px; font-size: 15px; cursor: pointer; }
+    .datenschutz-box { background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 8px; padding: 12px; margin-bottom: 16px; }
+    .checkbox-label { display: flex; gap: 10px; font-size: 13px; color: var(--gray-700); line-height: 1.5; cursor: pointer; }
+    .checkbox-label input { margin-top: 2px; flex-shrink: 0; width: 16px; height: 16px; }
+
+    /* Buttons */
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 11px 20px; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; border: none; transition: background 0.15s, transform 0.1s; }
+    .btn:active { transform: scale(0.98); }
+    .btn-primary { background: var(--primary); color: white; width: 100%; }
+    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-outline { background: transparent; color: var(--primary); border: 1.5px solid var(--primary); }
+    .btn-outline:hover { background: var(--primary-light); }
+    .btn-danger { background: var(--danger); color: white; }
+    .btn-sm { font-size: 13px; padding: 7px 14px; width: auto; }
+    .back-btn { background: none; border: none; color: var(--primary); font-size: 14px; font-weight: 500; cursor: pointer; padding: 0 0 16px 0; display: block; }
+    .back-btn-white { background: none; border: none; color: rgba(255,255,255,0.8); font-size: 14px; font-weight: 500; cursor: pointer; padding: 0; }
+
+    /* Messages */
+    .error-msg { color: var(--danger); background: var(--danger-light); border-radius: 8px; padding: 10px 14px; margin-top: 12px; font-size: 14px; }
+    .msg-box { border-radius: 8px; padding: 10px 14px; margin-top: 12px; font-size: 14px; }
+    .msg-success { background: var(--success-light); color: var(--success); }
+    .msg-error { background: var(--danger-light); color: var(--danger); }
+
+    /* Riege screen */
+    #screen-riege { background: var(--gray-50); }
+    .riege-header { background: linear-gradient(135deg, #1e3a8a, #2563eb); padding: 20px 20px 16px; display: flex; align-items: center; gap: 16px; }
+    #riege-header-info { flex: 1; }
+    #riege-header-name { display: block; color: white; font-size: 18px; font-weight: 700; }
+    #riege-header-sub { display: block; color: rgba(255,255,255,0.7); font-size: 13px; }
+    .riege-body { padding: 16px; max-width: 600px; margin: 0 auto; }
+    .kind-karte { background: white; border-radius: var(--radius); padding: 16px; margin-bottom: 12px; box-shadow: var(--shadow); }
+    .kind-karte-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .kind-name { font-weight: 700; font-size: 16px; }
+    .kind-meta { font-size: 12px; color: var(--gray-500); }
+    .kind-saved-badge { font-size: 12px; background: var(--success-light); color: var(--success); padding: 3px 8px; border-radius: 20px; font-weight: 600; }
+    .disziplin-section { margin-bottom: 12px; }
+    .disziplin-title { font-size: 13px; font-weight: 600; color: var(--gray-700); margin-bottom: 6px; }
+    .versuch-row { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
+    .versuch-label { font-size: 12px; color: var(--gray-500); min-width: 60px; }
+    .versuch-input { flex: 1; padding: 7px 10px; border: 1.5px solid var(--gray-200); border-radius: 6px; font-size: 14px; outline: none; transition: border-color 0.15s; }
+    .versuch-input:focus { border-color: var(--primary); }
+    .save-kind-btn { background: var(--primary); color: white; border: none; border-radius: 8px; padding: 9px 16px; font-size: 14px; font-weight: 600; cursor: pointer; width: 100%; margin-top: 8px; }
+    .save-kind-btn:hover { background: var(--primary-dark); }
+
+    /* Admin */
+    #screen-admin { background: var(--gray-50); }
+    .admin-header { background: white; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--gray-200); position: sticky; top: 0; z-index: 10; }
+    .admin-header h2 { margin: 0; font-size: 18px; }
+    .admin-tabs { display: flex; background: white; border-bottom: 2px solid var(--gray-200); overflow-x: auto; padding: 0 16px; }
+    .admin-tab { background: none; border: none; cursor: pointer; padding: 12px 16px; font-size: 14px; font-weight: 500; color: var(--gray-500); border-bottom: 2px solid transparent; margin-bottom: -2px; transition: color 0.15s; white-space: nowrap; }
+    .admin-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+    .admin-tab-content { display: none; padding: 16px; max-width: 720px; margin: 0 auto; }
+    .admin-tab-content.active { display: block; }
+    .admin-section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .table-wrap { background: white; border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; overflow-x: auto; }
+    .anmeldung-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .anmeldung-table th { background: var(--gray-100); padding: 8px 12px; text-align: left; font-size: 12px; font-weight: 600; color: var(--gray-500); border-bottom: 1px solid var(--gray-200); }
+    .anmeldung-table td { padding: 10px 12px; border-bottom: 1px solid var(--gray-100); }
+    .riege-karte { background: white; border-radius: var(--radius); padding: 16px; margin-bottom: 12px; box-shadow: var(--shadow); }
+    .riege-karte-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+    .riege-karte-title { font-weight: 700; font-size: 16px; }
+    .riege-karte-meta { font-size: 12px; color: var(--gray-500); margin-top: 2px; }
+    .riege-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .qr-container { margin-top: 12px; display: flex; align-items: center; gap: 16px; }
+    .qr-code-wrap { background: white; padding: 8px; border: 1px solid var(--gray-200); border-radius: 8px; }
+    .qr-token { font-family: monospace; font-size: 15px; font-weight: 700; color: var(--primary); letter-spacing: 1px; }
+    .warning-badge { background: var(--warning-light); color: var(--warning); padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+    .riege-kind-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--gray-100); font-size: 14px; }
+    .riege-kind-item:last-child { border-bottom: none; }
+    .auswertung-riege { background: white; border-radius: var(--radius); padding: 16px; margin-bottom: 16px; box-shadow: var(--shadow); }
+    .auswertung-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .auswertung-table th { background: var(--gray-100); padding: 6px 10px; text-align: left; font-size: 12px; font-weight: 600; color: var(--gray-500); }
+    .auswertung-table td { padding: 8px 10px; border-bottom: 1px solid var(--gray-100); }
+    .rang-1 { background: #fef9c3 !important; font-weight: 700; }
+    .rang-2 { background: #f1f5f9 !important; font-weight: 600; }
+    .rang-3 { background: #fdf4ff !important; font-weight: 600; }
+    .settings-section { background: white; border-radius: var(--radius); padding: 16px; margin-bottom: 16px; box-shadow: var(--shadow); }
+    .merge-area { background: var(--primary-light); border: 1.5px solid var(--primary); border-radius: var(--radius); padding: 16px; margin-top: 16px; }
+    .merge-area h4 { color: var(--primary-dark); margin-bottom: 12px; }
+    .merge-area select { width: 100%; padding: 8px 12px; border: 1.5px solid var(--gray-200); border-radius: 8px; font-size: 15px; background: white; margin-bottom: 8px; }
+    .sprint-row { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+    .sprint-row label { min-width: 80px; font-size: 14px; color: var(--gray-700); font-weight: 500; }
+    .sprint-row select { flex: 1; padding: 7px 10px; border: 1.5px solid var(--gray-200); border-radius: 6px; font-size: 14px; background: white; }
+    @media (max-width: 480px) { .card { margin: 12px; padding: 20px; } }
+  </style>
 </head>
 <body>
-
-<!-- ===== SCREEN ROUTER ===== -->
 <div id="app">
 
-  <!-- Loading -->
   <div id="screen-loading" class="screen active">
     <div class="loading-inner">
       <div class="spinner"></div>
@@ -24,96 +149,49 @@
     </div>
   </div>
 
-  <!-- Firebase Config Setup (first run) -->
   <div id="screen-setup" class="screen">
-    <div class="card setup-card">
+    <div class="card" style="margin-top:40px">
       <div class="logo">🏆</div>
-      <h1>Sportfest einrichten</h1>
-      <p class="subtitle">Trage deine Firebase-Konfiguration ein, um die App zu starten.</p>
-      <div class="form-group">
-        <label>API Key</label>
-        <input type="text" id="cfg-apiKey" placeholder="AIzaSy...">
-      </div>
-      <div class="form-group">
-        <label>Auth Domain</label>
-        <input type="text" id="cfg-authDomain" placeholder="sportfest.firebaseapp.com">
-      </div>
-      <div class="form-group">
-        <label>Project ID</label>
-        <input type="text" id="cfg-projectId" placeholder="sportfest-2025">
-      </div>
-      <div class="form-group">
-        <label>Storage Bucket</label>
-        <input type="text" id="cfg-storageBucket" placeholder="sportfest.appspot.com">
-      </div>
-      <div class="form-group">
-        <label>Messaging Sender ID</label>
-        <input type="text" id="cfg-messagingSenderId" placeholder="123456789">
-      </div>
-      <div class="form-group">
-        <label>App ID</label>
-        <input type="text" id="cfg-appId" placeholder="1:123...">
-      </div>
-      <div class="form-group">
-        <label>Admin-Passwort festlegen</label>
-        <input type="password" id="cfg-password" placeholder="Sicheres Passwort wählen">
-      </div>
-      <button class="btn btn-primary" onclick="saveConfig()">Einrichten & starten</button>
+      <h1 style="text-align:center">Sportfest einrichten</h1>
+      <p class="subtitle" style="text-align:center">Trage deine Firebase-Konfiguration ein.</p>
+      <div class="form-group"><label>API Key</label><input type="text" id="cfg-apiKey" placeholder="AIzaSy..."></div>
+      <div class="form-group"><label>Auth Domain</label><input type="text" id="cfg-authDomain" placeholder="sportfest.firebaseapp.com"></div>
+      <div class="form-group"><label>Project ID</label><input type="text" id="cfg-projectId" placeholder="sportfest-2025"></div>
+      <div class="form-group"><label>Storage Bucket</label><input type="text" id="cfg-storageBucket" placeholder="sportfest.appspot.com"></div>
+      <div class="form-group"><label>Messaging Sender ID</label><input type="text" id="cfg-messagingSenderId" placeholder="123456789"></div>
+      <div class="form-group"><label>App ID</label><input type="text" id="cfg-appId" placeholder="1:123..."></div>
+      <div class="form-group"><label>Admin-Passwort festlegen</label><input type="password" id="cfg-password" placeholder="Mindestens 4 Zeichen"></div>
+      <button class="btn btn-primary" onclick="saveConfig()">Einrichten &amp; starten</button>
       <div id="setup-error" class="error-msg" style="display:none"></div>
     </div>
   </div>
 
-  <!-- Home / Router -->
   <div id="screen-home" class="screen">
     <div class="home-container">
       <div class="home-logo">🏆</div>
       <h1 class="home-title">Sportfest</h1>
       <div class="home-buttons">
-        <button class="home-btn" onclick="showScreen('screen-register')">
-          <span class="home-btn-icon">👦</span>
-          <span class="home-btn-label">Kind anmelden</span>
-        </button>
-        <button class="home-btn" onclick="showScreen('screen-riege-login')">
-          <span class="home-btn-icon">📋</span>
-          <span class="home-btn-label">Riegenführer</span>
-        </button>
-        <button class="home-btn" onclick="showAdminLogin()">
-          <span class="home-btn-icon">⚙️</span>
-          <span class="home-btn-label">Admin</span>
-        </button>
+        <button class="home-btn" onclick="showScreen('screen-register')"><span class="home-btn-icon">👦</span><span class="home-btn-label">Kind anmelden</span></button>
+        <button class="home-btn" onclick="showScreen('screen-riege-login')"><span class="home-btn-icon">📋</span><span class="home-btn-label">Riegenführer</span></button>
+        <button class="home-btn" onclick="showAdminLogin()"><span class="home-btn-icon">⚙️</span><span class="home-btn-label">Admin</span></button>
       </div>
     </div>
   </div>
 
-  <!-- Kind anmelden -->
   <div id="screen-register" class="screen">
     <div class="card">
       <button class="back-btn" onclick="showScreen('screen-home')">← Zurück</button>
       <h2>Kind anmelden</h2>
-      <div class="form-group">
-        <label>Vorname</label>
-        <input type="text" id="reg-vorname" placeholder="z.B. Max">
-      </div>
-      <div class="form-group">
-        <label>Nachname</label>
-        <input type="text" id="reg-nachname" placeholder="z.B. Mustermann">
-      </div>
-      <div class="form-group">
-        <label>Jahrgang</label>
+      <div class="form-group"><label>Vorname</label><input type="text" id="reg-vorname" placeholder="z.B. Max"></div>
+      <div class="form-group"><label>Nachname</label><input type="text" id="reg-nachname" placeholder="z.B. Mustermann"></div>
+      <div class="form-group"><label>Jahrgang</label>
         <select id="reg-jahrgang">
           <option value="">Bitte wählen…</option>
-          <option value="2015">2015</option>
-          <option value="2016">2016</option>
-          <option value="2017">2017</option>
-          <option value="2018">2018</option>
-          <option value="2019">2019</option>
-          <option value="2020">2020</option>
-          <option value="2021">2021</option>
-          <option value="2022">2022</option>
+          <option>2015</option><option>2016</option><option>2017</option><option>2018</option>
+          <option>2019</option><option>2020</option><option>2021</option><option>2022</option>
         </select>
       </div>
-      <div class="form-group">
-        <label>Geschlecht</label>
+      <div class="form-group"><label>Geschlecht</label>
         <div class="radio-group">
           <label class="radio-label"><input type="radio" name="geschlecht" value="m"> Männlich</label>
           <label class="radio-label"><input type="radio" name="geschlecht" value="w"> Weiblich</label>
@@ -122,7 +200,7 @@
       <div class="datenschutz-box">
         <label class="checkbox-label">
           <input type="checkbox" id="reg-datenschutz">
-          <span>Ich stimme der Verarbeitung der oben angegebenen Daten zum Zweck der Durchführung des Sport- und Spielfestes zu. Die Daten werden ausschließlich für die Veranstaltung verwendet und danach gelöscht.</span>
+          <span>Ich stimme der Verarbeitung der angegebenen Daten zum Zweck der Durchführung des Sport- und Spielfestes zu. Die Daten werden ausschließlich für die Veranstaltung verwendet und danach gelöscht.</span>
         </label>
       </div>
       <button class="btn btn-primary" onclick="registerChild()">Kind anmelden</button>
@@ -130,50 +208,40 @@
     </div>
   </div>
 
-  <!-- Riegenführer Login (QR-Code Scan oder Token-Eingabe) -->
   <div id="screen-riege-login" class="screen">
     <div class="card">
       <button class="back-btn" onclick="showScreen('screen-home')">← Zurück</button>
       <h2>Riegenführer</h2>
-      <p class="subtitle">Scanne den QR-Code deiner Riege oder gib den Code manuell ein.</p>
-      <div class="form-group">
-        <label>Riegen-Code</label>
-        <input type="text" id="riege-token" placeholder="z.B. RIEGE-A3X9" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()">
+      <p class="subtitle">Gib den Code deiner Riege ein.</p>
+      <div class="form-group"><label>Riegen-Code</label>
+        <input type="text" id="riege-token" placeholder="z.B. R-ABC123" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()">
       </div>
       <button class="btn btn-primary" onclick="loginRiege()">Zur Riege</button>
       <div id="riege-login-error" class="error-msg" style="display:none"></div>
     </div>
   </div>
 
-  <!-- Riegenführer: Wettkampf-Eingabe -->
   <div id="screen-riege" class="screen">
     <div class="riege-header">
       <button class="back-btn-white" onclick="showScreen('screen-home')">← Verlassen</button>
       <div id="riege-header-info">
-        <span id="riege-header-name">Riege A</span>
-        <span id="riege-header-sub">Jahrgang – Geschlecht</span>
+        <span id="riege-header-name">Riege</span>
+        <span id="riege-header-sub"></span>
       </div>
     </div>
-    <div class="riege-body">
-      <div id="riege-kinder-liste"></div>
-    </div>
+    <div class="riege-body"><div id="riege-kinder-liste"></div></div>
   </div>
 
-  <!-- Admin Login -->
   <div id="screen-admin-login" class="screen">
     <div class="card">
       <button class="back-btn" onclick="showScreen('screen-home')">← Zurück</button>
       <h2>Admin-Bereich</h2>
-      <div class="form-group">
-        <label>Passwort</label>
-        <input type="password" id="admin-pw-input" placeholder="Admin-Passwort">
-      </div>
+      <div class="form-group"><label>Passwort</label><input type="password" id="admin-pw-input" placeholder="Admin-Passwort" onkeydown="if(event.key==='Enter')adminLogin()"></div>
       <button class="btn btn-primary" onclick="adminLogin()">Einloggen</button>
       <div id="admin-login-error" class="error-msg" style="display:none"></div>
     </div>
   </div>
 
-  <!-- Admin Dashboard -->
   <div id="screen-admin" class="screen">
     <div class="admin-header">
       <h2>Admin</h2>
@@ -185,8 +253,6 @@
       <button class="admin-tab" onclick="adminTab('auswertung')">Auswertung</button>
       <button class="admin-tab" onclick="adminTab('einstellungen')">Einstellungen</button>
     </div>
-
-    <!-- Tab: Anmeldungen -->
     <div id="admin-tab-anmeldungen" class="admin-tab-content active">
       <div class="admin-section-header">
         <h3>Angemeldete Kinder</h3>
@@ -194,82 +260,487 @@
       </div>
       <div id="admin-anmeldungen-liste"></div>
     </div>
-
-    <!-- Tab: Riegen -->
     <div id="admin-tab-riegen" class="admin-tab-content">
       <div class="admin-section-header">
         <h3>Riegen verwalten</h3>
-        <button class="btn btn-sm btn-primary" onclick="autoGenerateRiegen()">Riegen automatisch generieren</button>
+        <button class="btn btn-sm btn-primary" onclick="autoGenerateRiegen()">Automatisch generieren</button>
       </div>
       <div id="riegen-warnungen"></div>
       <div id="admin-riegen-liste"></div>
-      <!-- Zusammenlegen Modal-Area -->
       <div id="merge-area" style="display:none" class="merge-area">
         <h4>Riegen zusammenlegen</h4>
-        <div class="form-group">
-          <label>Riege 1</label>
-          <select id="merge-r1"></select>
-        </div>
-        <div class="form-group">
-          <label>Riege 2</label>
-          <select id="merge-r2"></select>
-        </div>
-        <button class="btn btn-primary" onclick="mergeRiegen()">Zusammenlegen</button>
+        <div class="form-group"><label>Riege 1</label><select id="merge-r1"></select></div>
+        <div class="form-group"><label>Riege 2</label><select id="merge-r2"></select></div>
+        <button class="btn btn-primary" style="margin-bottom:8px" onclick="mergeRiegen()">Zusammenlegen</button>
         <button class="btn btn-outline" onclick="document.getElementById('merge-area').style.display='none'">Abbrechen</button>
       </div>
-      <button class="btn btn-outline" style="margin-top:16px" onclick="showMergeArea()">Riegen zusammenlegen</button>
+      <button class="btn btn-outline" style="margin-top:16px" onclick="document.getElementById('merge-area').style.display='block'">Riegen zusammenlegen</button>
     </div>
-
-    <!-- Tab: Auswertung -->
     <div id="admin-tab-auswertung" class="admin-tab-content">
       <div class="admin-section-header">
-        <h3>Ergebnisse & Punkte</h3>
-        <button class="btn btn-sm btn-primary" onclick="calcAuswertung()">Auswertung berechnen</button>
+        <h3>Ergebnisse &amp; Punkte</h3>
+        <button class="btn btn-sm btn-primary" onclick="calcAuswertung()">Berechnen</button>
       </div>
       <div id="auswertung-output"></div>
     </div>
-
-    <!-- Tab: Einstellungen -->
     <div id="admin-tab-einstellungen" class="admin-tab-content">
-      <h3>Einstellungen</h3>
       <div class="settings-section">
         <h4>Passwort ändern</h4>
-        <div class="form-group">
-          <label>Neues Passwort</label>
-          <input type="password" id="new-pw" placeholder="Neues Passwort">
-        </div>
-        <div class="form-group">
-          <label>Wiederholen</label>
-          <input type="password" id="new-pw2" placeholder="Passwort wiederholen">
-        </div>
+        <div class="form-group"><label>Neues Passwort</label><input type="password" id="new-pw" placeholder="Neues Passwort"></div>
+        <div class="form-group"><label>Wiederholen</label><input type="password" id="new-pw2" placeholder="Passwort wiederholen"></div>
         <button class="btn btn-primary" onclick="changePassword()">Passwort ändern</button>
         <div id="pw-change-msg" class="msg-box" style="display:none"></div>
       </div>
       <div class="settings-section">
         <h4>Mindestgröße Riege</h4>
-        <div class="form-group">
-          <label>Minimum Kinder pro Riege</label>
-          <input type="number" id="min-riege-size" value="6" min="1" max="20">
-        </div>
+        <div class="form-group"><label>Minimum Kinder</label><input type="number" id="min-riege-size" value="6" min="1" max="20"></div>
         <button class="btn btn-primary" onclick="saveMinRiegeSize()">Speichern</button>
         <div id="min-size-msg" class="msg-box" style="display:none"></div>
       </div>
       <div class="settings-section">
         <h4>Sprintstrecken je Jahrgang</h4>
         <div id="sprint-config"></div>
-        <button class="btn btn-primary" onclick="saveSprintConfig()">Sprintstrecken speichern</button>
+        <button class="btn btn-primary" onclick="saveSprintConfig()">Speichern</button>
         <div id="sprint-config-msg" class="msg-box" style="display:none"></div>
       </div>
       <div class="settings-section">
         <h4>Firebase-Konfiguration zurücksetzen</h4>
-        <button class="btn btn-danger" onclick="resetConfig()">Konfiguration zurücksetzen</button>
+        <button class="btn btn-danger" onclick="resetConfig()">Zurücksetzen</button>
       </div>
     </div>
   </div>
 
-</div><!-- #app -->
+</div>
 
-<script src="firebase-config.js"></script>
-<script src="app.js"></script>
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<!-- QR Code -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<script>
+// ===== CONFIG =====
+function getStoredConfig() {
+  try { return JSON.parse(localStorage.getItem('sportfest_cfg') || 'null'); } catch(e) { return null; }
+}
+
+function initFirebase(cfg) {
+  try {
+    if (!firebase.apps.length) firebase.initializeApp(cfg);
+    window.db = firebase.firestore();
+    return true;
+  } catch(e) { console.error('Firebase:', e); return false; }
+}
+
+function simpleHash(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) { h = ((h << 5) - h) + str.charCodeAt(i); h = h & h; }
+  return h.toString(36);
+}
+
+// ===== STARTUP =====
+window.onload = function() {
+  const cfg = getStoredConfig();
+  if (!cfg || !cfg.apiKey || !cfg.projectId) {
+    showScreen('screen-setup');
+    return;
+  }
+  const ok = initFirebase(cfg);
+  if (!ok) {
+    showScreen('screen-setup');
+    return;
+  }
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get('riege');
+  if (token) { openRiegeByToken(token); return; }
+  showScreen('screen-home');
+  buildSprintConfig();
+};
+
+// ===== SCREENS =====
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ===== SETUP =====
+async function saveConfig() {
+  const cfg = {
+    apiKey: v('cfg-apiKey'), authDomain: v('cfg-authDomain'),
+    projectId: v('cfg-projectId'), storageBucket: v('cfg-storageBucket'),
+    messagingSenderId: v('cfg-messagingSenderId'), appId: v('cfg-appId')
+  };
+  const pw = v('cfg-password');
+  const err = document.getElementById('setup-error');
+  err.style.display = 'none';
+  if (!cfg.apiKey || !cfg.projectId) { showErr(err, 'Bitte API Key und Project ID eintragen.'); return; }
+  if (!pw || pw.length < 4) { showErr(err, 'Passwort muss mindestens 4 Zeichen haben.'); return; }
+  const ok = initFirebase(cfg);
+  if (!ok) { showErr(err, 'Firebase konnte nicht gestartet werden. Bitte Konfiguration prüfen.'); return; }
+  try {
+    await db.collection('config').doc('admin').set({ passwordHash: simpleHash(pw) });
+    await db.collection('config').doc('settings').set({ minRiegeSize: 6 }, { merge: true });
+    localStorage.setItem('sportfest_cfg', JSON.stringify(cfg));
+    showScreen('screen-home');
+    buildSprintConfig();
+  } catch(e) { showErr(err, 'Firebase-Fehler: ' + e.message + ' — Bitte Firestore-Regeln prüfen.'); }
+}
+
+function resetConfig() {
+  if (confirm('Konfiguration wirklich zurücksetzen?')) { localStorage.removeItem('sportfest_cfg'); location.reload(); }
+}
+
+// ===== KIND ANMELDEN =====
+async function registerChild() {
+  const vorname = v('reg-vorname'), nachname = v('reg-nachname');
+  const jahrgang = v('reg-jahrgang');
+  const geschlecht = document.querySelector('input[name="geschlecht"]:checked')?.value;
+  const datenschutz = document.getElementById('reg-datenschutz').checked;
+  const msg = document.getElementById('register-msg');
+  if (!vorname || !nachname) { showMsg(msg, 'Bitte Vor- und Nachname eintragen.', 'error'); return; }
+  if (!jahrgang) { showMsg(msg, 'Bitte Jahrgang wählen.', 'error'); return; }
+  if (!geschlecht) { showMsg(msg, 'Bitte Geschlecht wählen.', 'error'); return; }
+  if (!datenschutz) { showMsg(msg, 'Bitte der Datenverarbeitung zustimmen.', 'error'); return; }
+  try {
+    await db.collection('kinder').add({ vorname, nachname, jahrgang, geschlecht, angemeldetAm: new Date().toISOString(), riegeId: null, ergebnisse: {} });
+    showMsg(msg, '✓ ' + vorname + ' ' + nachname + ' wurde angemeldet!', 'success');
+    ['reg-vorname','reg-nachname'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('reg-jahrgang').value = '';
+    document.querySelectorAll('input[name="geschlecht"]').forEach(r => r.checked = false);
+    document.getElementById('reg-datenschutz').checked = false;
+  } catch(e) { showMsg(msg, 'Fehler: ' + e.message, 'error'); }
+}
+
+// ===== RIEGENFÜHRER =====
+async function loginRiege() {
+  const token = v('riege-token').toUpperCase();
+  const err = document.getElementById('riege-login-error');
+  if (!token) { err.textContent = 'Bitte Code eingeben.'; err.style.display = 'block'; return; }
+  await openRiegeByToken(token);
+}
+
+async function openRiegeByToken(token) {
+  try {
+    const snap = await db.collection('riegen').where('token', '==', token).get();
+    if (snap.empty) {
+      const err = document.getElementById('riege-login-error');
+      if (err) { err.textContent = 'Riege nicht gefunden.'; err.style.display = 'block'; }
+      showScreen('screen-riege-login'); return;
+    }
+    const doc = snap.docs[0];
+    await renderRiege(doc.id, doc.data());
+    showScreen('screen-riege');
+  } catch(e) {
+    const err = document.getElementById('riege-login-error');
+    if (err) { err.textContent = 'Fehler: ' + e.message; err.style.display = 'block'; }
+    showScreen('screen-riege-login');
+  }
+}
+
+async function renderRiege(riegeId, r) {
+  document.getElementById('riege-header-name').textContent = r.name || 'Riege';
+  const jg = (r.jahrgaenge || [r.jahrgang]).filter(Boolean).join(', ');
+  const gs = (r.geschlechter || [r.geschlecht === 'm' ? 'Männlich' : 'Weiblich']).filter(Boolean).join('/');
+  document.getElementById('riege-header-sub').textContent = 'Jg. ' + jg + ' · ' + gs;
+  const sprintCfg = await getSprintConfig();
+  const snap = await db.collection('kinder').where('riegeId', '==', riegeId).get();
+  const kinder = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => a.nachname.localeCompare(b.nachname));
+  const liste = document.getElementById('riege-kinder-liste');
+  if (!kinder.length) { liste.innerHTML = '<p style="color:var(--gray-500);text-align:center;padding:32px">Noch keine Kinder in dieser Riege.</p>'; return; }
+  liste.innerHTML = kinder.map(k => {
+    const sprint = sprintCfg[k.jahrgang] || '50m';
+    const e = k.ergebnisse || {};
+    return `<div class="kind-karte" id="karte-${k.id}">
+      <div class="kind-karte-header">
+        <div><div class="kind-name">${k.vorname} ${k.nachname}</div><div class="kind-meta">Jg. ${k.jahrgang} · ${k.geschlecht==='m'?'♂':'♀'}</div></div>
+        <span class="kind-saved-badge" id="badge-${k.id}" style="display:none">✓ Gespeichert</span>
+      </div>
+      <div class="disziplin-section">
+        <div class="disziplin-title">🎯 Wurf (3 Versuche)</div>
+        ${[1,2,3].map(v=>`<div class="versuch-row"><span class="versuch-label">Versuch ${v}</span><input class="versuch-input" type="number" step="0.01" min="0" placeholder="0.00 m" id="wurf-${k.id}-${v}" value="${e.wurf?.['v'+v]||''}" oninput="updateBest('wurf','${k.id}')"></div>`).join('')}
+        <div style="text-align:right;font-size:12px;color:var(--primary);font-weight:600;margin-top:4px">Bester: <span id="best-wurf-${k.id}">—</span> m</div>
+      </div>
+      <div class="disziplin-section">
+        <div class="disziplin-title">🏃 Sprint (${sprint})</div>
+        <div class="versuch-row"><span class="versuch-label">Zeit (s)</span><input class="versuch-input" type="number" step="0.01" min="0" placeholder="0.00 s" id="sprint-${k.id}" value="${e.sprint||''}"></div>
+      </div>
+      <div class="disziplin-section">
+        <div class="disziplin-title">↔️ Weitsprung (3 Versuche)</div>
+        ${[1,2,3].map(v=>`<div class="versuch-row"><span class="versuch-label">Versuch ${v}</span><input class="versuch-input" type="number" step="0.01" min="0" placeholder="0.00 m" id="ws-${k.id}-${v}" value="${e.weitsprung?.['v'+v]||''}" oninput="updateBest('ws','${k.id}')"></div>`).join('')}
+        <div style="text-align:right;font-size:12px;color:var(--primary);font-weight:600;margin-top:4px">Bester: <span id="best-ws-${k.id}">—</span> m</div>
+      </div>
+      <button class="save-kind-btn" onclick="saveKind('${k.id}')">💾 Ergebnisse speichern</button>
+    </div>`;
+  }).join('');
+  kinder.forEach(k => { updateBest('wurf', k.id); updateBest('ws', k.id); });
+}
+
+function updateBest(prefix, id) {
+  const vals = [1,2,3].map(i => parseFloat(document.getElementById(`${prefix}-${id}-${i}`)?.value)).filter(n => !isNaN(n));
+  const el = document.getElementById(`best-${prefix}-${id}`);
+  if (el) el.textContent = vals.length ? Math.max(...vals).toFixed(2) : '—';
+}
+
+async function saveKind(id) {
+  const wurf = { v1: pf(`wurf-${id}-1`), v2: pf(`wurf-${id}-2`), v3: pf(`wurf-${id}-3`) };
+  const weitsprung = { v1: pf(`ws-${id}-1`), v2: pf(`ws-${id}-2`), v3: pf(`ws-${id}-3`) };
+  const sprint = pf(`sprint-${id}`);
+  try {
+    await db.collection('kinder').doc(id).update({ ergebnisse: { wurf, weitsprung, sprint } });
+    const badge = document.getElementById(`badge-${id}`);
+    if (badge) { badge.style.display = 'inline'; setTimeout(() => badge.style.display = 'none', 2500); }
+  } catch(e) { alert('Fehler: ' + e.message); }
+}
+
+// ===== ADMIN =====
+let adminLoggedIn = false;
+function showAdminLogin() { showScreen('screen-admin-login'); }
+async function adminLogin() {
+  const pw = v('admin-pw-input');
+  const err = document.getElementById('admin-login-error');
+  try {
+    const doc = await db.collection('config').doc('admin').get();
+    if (doc.exists && doc.data().passwordHash === simpleHash(pw)) {
+      adminLoggedIn = true;
+      showScreen('screen-admin');
+      adminTab('anmeldungen');
+      buildSprintConfig();
+    } else { showErr(err, 'Falsches Passwort.'); }
+  } catch(e) { showErr(err, 'Fehler: ' + e.message); }
+}
+function adminLogout() { adminLoggedIn = false; document.getElementById('admin-pw-input').value = ''; showScreen('screen-home'); }
+
+function adminTab(name) {
+  document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.admin-tab-content').forEach(c => c.classList.remove('active'));
+  document.querySelector(`.admin-tab[onclick="adminTab('${name}')"]`).classList.add('active');
+  document.getElementById(`admin-tab-${name}`).classList.add('active');
+  if (name === 'anmeldungen') loadAdminAnmeldungen();
+  if (name === 'riegen') loadAdminRiegen();
+  if (name === 'auswertung') calcAuswertung();
+  if (name === 'einstellungen') loadSettings();
+}
+
+async function loadAdminAnmeldungen() {
+  const liste = document.getElementById('admin-anmeldungen-liste');
+  liste.innerHTML = '<p style="color:var(--gray-500);font-size:14px">Lädt…</p>';
+  try {
+    const snap = await db.collection('kinder').orderBy('nachname').get();
+    if (snap.empty) { liste.innerHTML = '<p style="color:var(--gray-500)">Noch keine Anmeldungen.</p>'; return; }
+    const rows = snap.docs.map(d => {
+      const k = d.data();
+      return `<tr><td>${k.nachname}, ${k.vorname}</td><td>${k.jahrgang}</td><td>${k.geschlecht==='m'?'Männlich':'Weiblich'}</td><td>${k.riegeId?'✓':'-'}</td><td><button class="btn btn-sm btn-danger" style="padding:4px 10px" onclick="deleteKind('${d.id}')">✕</button></td></tr>`;
+    }).join('');
+    liste.innerHTML = `<div class="table-wrap"><table class="anmeldung-table"><thead><tr><th>Name</th><th>Jg.</th><th>Geschlecht</th><th>Riege</th><th></th></tr></thead><tbody>${rows}</tbody></table></div><p style="font-size:12px;color:var(--gray-500);margin-top:8px">${snap.size} Kinder</p>`;
+  } catch(e) { liste.innerHTML = '<p class="error-msg">Fehler: '+e.message+'</p>'; }
+}
+
+async function deleteKind(id) {
+  if (!confirm('Kind wirklich löschen?')) return;
+  await db.collection('kinder').doc(id).delete();
+  loadAdminAnmeldungen();
+}
+
+async function autoGenerateRiegen() {
+  if (!confirm('Riegen automatisch aus den Anmeldungen generieren?')) return;
+  try {
+    const snap = await db.collection('kinder').get();
+    const groups = {};
+    snap.docs.forEach(d => {
+      const k = d.data();
+      const key = k.jahrgang + '-' + k.geschlecht;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(d.id);
+    });
+    const existSnap = await db.collection('riegen').get();
+    const existing = {};
+    existSnap.docs.forEach(d => { const r = d.data(); existing[r.jahrgang+'-'+r.geschlecht] = d.id; });
+    const batch = db.batch();
+    for (const [key, ids] of Object.entries(groups)) {
+      const [jg, gs] = key.split('-');
+      let riegeId = existing[key];
+      if (!riegeId) {
+        const ref = db.collection('riegen').doc();
+        riegeId = ref.id;
+        batch.set(ref, { name: 'Riege ' + jg + ' ' + (gs==='m'?'Knaben':'Mädchen'), jahrgang: jg, geschlecht: gs, jahrgaenge: [jg], geschlechter: [gs==='m'?'Männlich':'Weiblich'], token: generateToken(), createdAt: new Date().toISOString() });
+      }
+      ids.forEach(id => batch.update(db.collection('kinder').doc(id), { riegeId }));
+    }
+    await batch.commit();
+    await loadAdminRiegen();
+    alert('Riegen wurden generiert!');
+  } catch(e) { alert('Fehler: ' + e.message); }
+}
+
+async function loadAdminRiegen() {
+  const liste = document.getElementById('admin-riegen-liste');
+  const warnDiv = document.getElementById('riegen-warnungen');
+  liste.innerHTML = '<p style="color:var(--gray-500);font-size:14px">Lädt…</p>';
+  warnDiv.innerHTML = '';
+  try {
+    const settingsDoc = await db.collection('config').doc('settings').get();
+    const minSize = settingsDoc.exists ? (settingsDoc.data().minRiegeSize || 6) : 6;
+    const rSnap = await db.collection('riegen').get();
+    if (rSnap.empty) { liste.innerHTML = '<p style="color:var(--gray-500)">Noch keine Riegen.</p>'; return; }
+    let html = '';
+    for (const doc of rSnap.docs) {
+      const r = doc.data();
+      const kSnap = await db.collection('kinder').where('riegeId','==',doc.id).get();
+      const kinder = kSnap.docs.map(d => ({id:d.id,...d.data()}));
+      const appUrl = window.location.origin + window.location.pathname + '?riege=' + r.token;
+      if (kinder.length < minSize) warnDiv.innerHTML += `<div class="warning-badge">⚠️ ${r.name}: nur ${kinder.length} Kind(er) — Minimum ${minSize}</div>`;
+      html += `<div class="riege-karte">
+        <div class="riege-karte-header">
+          <div><div class="riege-karte-title">${r.name}</div><div class="riege-karte-meta">${kinder.length} Kinder</div></div>
+          <div class="riege-actions">
+            <button class="btn btn-sm btn-danger" onclick="deleteRiege('${doc.id}')">Löschen</button>
+          </div>
+        </div>
+        <div class="qr-container">
+          <div class="qr-code-wrap" id="qr-${doc.id}"></div>
+          <div><div class="qr-token">${r.token}</div><div style="font-size:12px;color:var(--gray-500);margin-top:4px">Code für Riegenführer</div><div style="font-size:11px;color:var(--gray-500);margin-top:2px;word-break:break-all">${appUrl}</div></div>
+        </div>
+        <div style="margin-top:10px">${kinder.map(k=>`<div class="riege-kind-item"><span>${k.nachname}, ${k.vorname} (${k.jahrgang})</span><button style="font-size:12px;background:none;border:none;color:var(--danger);cursor:pointer" onclick="removeFromRiege('${k.id}')">Entfernen</button></div>`).join('')}</div>
+      </div>`;
+    }
+    liste.innerHTML = html;
+    // QR Codes
+    rSnap.docs.forEach(doc => {
+      const r = doc.data();
+      const appUrl = window.location.origin + window.location.pathname + '?riege=' + r.token;
+      const el = document.getElementById('qr-'+doc.id);
+      if (el && typeof QRCode !== 'undefined') { el.innerHTML=''; new QRCode(el, {text:appUrl,width:80,height:80}); }
+    });
+    // Merge selects
+    ['merge-r1','merge-r2'].forEach(sid => {
+      const sel = document.getElementById(sid);
+      if (sel) sel.innerHTML = rSnap.docs.map(d=>`<option value="${d.id}">${d.data().name}</option>`).join('');
+    });
+  } catch(e) { liste.innerHTML = '<p class="error-msg">Fehler: '+e.message+'</p>'; }
+}
+
+async function removeFromRiege(id) {
+  await db.collection('kinder').doc(id).update({riegeId:null});
+  loadAdminRiegen();
+}
+
+async function deleteRiege(id) {
+  if (!confirm('Riege löschen?')) return;
+  const snap = await db.collection('kinder').where('riegeId','==',id).get();
+  const batch = db.batch();
+  snap.docs.forEach(d => batch.update(d.ref, {riegeId:null}));
+  batch.delete(db.collection('riegen').doc(id));
+  await batch.commit();
+  loadAdminRiegen();
+}
+
+async function mergeRiegen() {
+  const r1 = document.getElementById('merge-r1').value;
+  const r2 = document.getElementById('merge-r2').value;
+  if (r1===r2) { alert('Bitte zwei verschiedene Riegen wählen.'); return; }
+  const [d1, d2] = await Promise.all([db.collection('riegen').doc(r1).get(), db.collection('riegen').doc(r2).get()]);
+  const [rd1, rd2] = [d1.data(), d2.data()];
+  const jahrgaenge = [...new Set([...(rd1.jahrgaenge||[rd1.jahrgang]),...(rd2.jahrgaenge||[rd2.jahrgang])].filter(Boolean))].sort();
+  const geschlechter = [...new Set([...(rd1.geschlechter||[rd1.geschlecht==='m'?'Männlich':'Weiblich']),...(rd2.geschlechter||[rd2.geschlecht==='m'?'Männlich':'Weiblich'])].filter(Boolean))];
+  const newName = 'Riege ' + jahrgaenge.join('/') + ' ' + geschlechter.join('/');
+  const batch = db.batch();
+  batch.update(db.collection('riegen').doc(r1), {name:newName, jahrgaenge, geschlechter});
+  const kSnap = await db.collection('kinder').where('riegeId','==',r2).get();
+  kSnap.docs.forEach(d => batch.update(d.ref, {riegeId:r1}));
+  batch.delete(db.collection('riegen').doc(r2));
+  await batch.commit();
+  document.getElementById('merge-area').style.display = 'none';
+  loadAdminRiegen();
+  alert('Zusammengelegt: ' + newName);
+}
+
+// ===== AUSWERTUNG =====
+async function calcAuswertung() {
+  const out = document.getElementById('auswertung-output');
+  out.innerHTML = '<p style="color:var(--gray-500)">Berechne…</p>';
+  try {
+    const rSnap = await db.collection('riegen').get();
+    if (rSnap.empty) { out.innerHTML = '<p style="color:var(--gray-500)">Noch keine Riegen.</p>'; return; }
+    let html = '';
+    const medals = ['🥇','🥈','🥉'];
+    for (const rDoc of rSnap.docs) {
+      const r = rDoc.data();
+      const kSnap = await db.collection('kinder').where('riegeId','==',rDoc.id).get();
+      const results = kSnap.docs.map(d => {
+        const k = d.data(); const e = k.ergebnisse||{};
+        const bestWurf = bestNum(e.wurf);
+        const bestWS = bestNum(e.weitsprung);
+        const sprint = e.sprint||null;
+        return {...k, bestWurf, bestWS, sprint, punkte: (bestWurf||0) + (bestWS||0)};
+      }).sort((a,b) => b.punkte - a.punkte);
+      html += `<div class="auswertung-riege"><h4>${r.name}</h4><div style="overflow-x:auto"><table class="auswertung-table">
+        <thead><tr><th>Rang</th><th>Name</th><th>Jg.</th><th>Wurf</th><th>Weitsprung</th><th>Sprint</th><th>Punkte*</th></tr></thead>
+        <tbody>${results.map((k,i)=>`<tr class="${i<3?'rang-'+(i+1):''}"><td>${i<3?medals[i]:(i+1)+'.'}</td><td>${k.nachname}, ${k.vorname}</td><td>${k.jahrgang} ${k.geschlecht==='m'?'♂':'♀'}</td><td>${k.bestWurf!==null?k.bestWurf.toFixed(2)+' m':'—'}</td><td>${k.bestWS!==null?k.bestWS.toFixed(2)+' m':'—'}</td><td>${k.sprint!==null?k.sprint.toFixed(2)+' s':'—'}</td><td><strong>${k.punkte.toFixed(2)}</strong></td></tr>`).join('')}</tbody>
+      </table></div></div>`;
+    }
+    out.innerHTML = html + '<p style="font-size:12px;color:var(--gray-500);margin-top:8px">* Punktetabellen noch nicht hinterlegt — Summe der Rohwerte</p>';
+  } catch(e) { out.innerHTML = '<p class="error-msg">Fehler: '+e.message+'</p>'; }
+}
+
+function bestNum(obj) {
+  if (!obj) return null;
+  const vals = [obj.v1,obj.v2,obj.v3].filter(x=>x!==null&&x!==undefined).map(Number).filter(n=>!isNaN(n));
+  return vals.length ? Math.max(...vals) : null;
+}
+
+// ===== EINSTELLUNGEN =====
+async function loadSettings() {
+  try {
+    const doc = await db.collection('config').doc('settings').get();
+    if (doc.exists && doc.data().minRiegeSize) document.getElementById('min-riege-size').value = doc.data().minRiegeSize;
+  } catch(e) {}
+  buildSprintConfig();
+}
+
+async function changePassword() {
+  const pw1 = v('new-pw'), pw2 = v('new-pw2');
+  const msg = document.getElementById('pw-change-msg');
+  if (pw1.length < 4) { showMsg(msg,'Mindestens 4 Zeichen.','error'); return; }
+  if (pw1!==pw2) { showMsg(msg,'Passwörter stimmen nicht überein.','error'); return; }
+  try { await db.collection('config').doc('admin').update({passwordHash:simpleHash(pw1)}); showMsg(msg,'✓ Passwort geändert.','success'); } catch(e) { showMsg(msg,'Fehler: '+e.message,'error'); }
+}
+
+async function saveMinRiegeSize() {
+  const val = parseInt(document.getElementById('min-riege-size').value);
+  const msg = document.getElementById('min-size-msg');
+  if (isNaN(val)||val<1) { showMsg(msg,'Ungültiger Wert.','error'); return; }
+  try { await db.collection('config').doc('settings').set({minRiegeSize:val},{merge:true}); showMsg(msg,'✓ Gespeichert.','success'); } catch(e) { showMsg(msg,'Fehler: '+e.message,'error'); }
+}
+
+const JAHRGAENGE = ['2015','2016','2017','2018','2019','2020','2021','2022'];
+const SPRINT_OPT = ['30m','50m','60m','75m','100m'];
+
+async function getSprintConfig() {
+  try { const doc = await db.collection('config').doc('settings').get(); if (doc.exists && doc.data().sprintConfig) return doc.data().sprintConfig; } catch(e) {}
+  return {};
+}
+
+async function buildSprintConfig() {
+  const el = document.getElementById('sprint-config');
+  if (!el) return;
+  let cfg = {};
+  try { const doc = await db.collection('config').doc('settings').get(); if (doc.exists && doc.data().sprintConfig) cfg = doc.data().sprintConfig; } catch(e) {}
+  el.innerHTML = JAHRGAENGE.map(jg => `<div class="sprint-row"><label>Jg. ${jg}</label><select id="sp-${jg}">${SPRINT_OPT.map(o=>`<option value="${o}" ${(cfg[jg]||'50m')===o?'selected':''}>${o}</option>`).join('')}</select></div>`).join('');
+}
+
+async function saveSprintConfig() {
+  const msg = document.getElementById('sprint-config-msg');
+  const cfg = {};
+  JAHRGAENGE.forEach(jg => { const el=document.getElementById('sp-'+jg); if(el) cfg[jg]=el.value; });
+  try { await db.collection('config').doc('settings').set({sprintConfig:cfg},{merge:true}); showMsg(msg,'✓ Sprintstrecken gespeichert.','success'); } catch(e) { showMsg(msg,'Fehler: '+e.message,'error'); }
+}
+
+// ===== HELPERS =====
+function v(id) { return (document.getElementById(id)?.value||'').trim(); }
+function pf(id) { const val=document.getElementById(id)?.value; if(!val||val==='') return null; const n=parseFloat(val); return isNaN(n)?null:n; }
+function generateToken() { const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let t='R-'; for(let i=0;i<6;i++) t+=c[Math.floor(Math.random()*c.length)]; return t; }
+function showMsg(el, text, type) { el.textContent=text; el.className='msg-box msg-'+type; el.style.display='block'; setTimeout(()=>el.style.display='none',3500); }
+function showErr(el, text) { el.textContent=text; el.style.display='block'; }
+</script>
 </body>
 </html>
