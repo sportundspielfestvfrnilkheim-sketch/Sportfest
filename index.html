@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sportfest</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <!-- QR Code library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+
+<!-- ===== SCREEN ROUTER ===== -->
+<div id="app">
+
+  <!-- Loading -->
+  <div id="screen-loading" class="screen active">
+    <div class="loading-inner">
+      <div class="spinner"></div>
+      <p>Sportfest wird geladen…</p>
+    </div>
+  </div>
+
+  <!-- Firebase Config Setup (first run) -->
+  <div id="screen-setup" class="screen">
+    <div class="card setup-card">
+      <div class="logo">🏆</div>
+      <h1>Sportfest einrichten</h1>
+      <p class="subtitle">Trage deine Firebase-Konfiguration ein, um die App zu starten.</p>
+      <div class="form-group">
+        <label>API Key</label>
+        <input type="text" id="cfg-apiKey" placeholder="AIzaSy...">
+      </div>
+      <div class="form-group">
+        <label>Auth Domain</label>
+        <input type="text" id="cfg-authDomain" placeholder="sportfest.firebaseapp.com">
+      </div>
+      <div class="form-group">
+        <label>Project ID</label>
+        <input type="text" id="cfg-projectId" placeholder="sportfest-2025">
+      </div>
+      <div class="form-group">
+        <label>Storage Bucket</label>
+        <input type="text" id="cfg-storageBucket" placeholder="sportfest.appspot.com">
+      </div>
+      <div class="form-group">
+        <label>Messaging Sender ID</label>
+        <input type="text" id="cfg-messagingSenderId" placeholder="123456789">
+      </div>
+      <div class="form-group">
+        <label>App ID</label>
+        <input type="text" id="cfg-appId" placeholder="1:123...">
+      </div>
+      <div class="form-group">
+        <label>Admin-Passwort festlegen</label>
+        <input type="password" id="cfg-password" placeholder="Sicheres Passwort wählen">
+      </div>
+      <button class="btn btn-primary" onclick="saveConfig()">Einrichten & starten</button>
+      <div id="setup-error" class="error-msg" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- Home / Router -->
+  <div id="screen-home" class="screen">
+    <div class="home-container">
+      <div class="home-logo">🏆</div>
+      <h1 class="home-title">Sportfest</h1>
+      <div class="home-buttons">
+        <button class="home-btn" onclick="showScreen('screen-register')">
+          <span class="home-btn-icon">👦</span>
+          <span class="home-btn-label">Kind anmelden</span>
+        </button>
+        <button class="home-btn" onclick="showScreen('screen-riege-login')">
+          <span class="home-btn-icon">📋</span>
+          <span class="home-btn-label">Riegenführer</span>
+        </button>
+        <button class="home-btn" onclick="showAdminLogin()">
+          <span class="home-btn-icon">⚙️</span>
+          <span class="home-btn-label">Admin</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Kind anmelden -->
+  <div id="screen-register" class="screen">
+    <div class="card">
+      <button class="back-btn" onclick="showScreen('screen-home')">← Zurück</button>
+      <h2>Kind anmelden</h2>
+      <div class="form-group">
+        <label>Vorname</label>
+        <input type="text" id="reg-vorname" placeholder="z.B. Max">
+      </div>
+      <div class="form-group">
+        <label>Nachname</label>
+        <input type="text" id="reg-nachname" placeholder="z.B. Mustermann">
+      </div>
+      <div class="form-group">
+        <label>Jahrgang</label>
+        <select id="reg-jahrgang">
+          <option value="">Bitte wählen…</option>
+          <option value="2015">2015</option>
+          <option value="2016">2016</option>
+          <option value="2017">2017</option>
+          <option value="2018">2018</option>
+          <option value="2019">2019</option>
+          <option value="2020">2020</option>
+          <option value="2021">2021</option>
+          <option value="2022">2022</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Geschlecht</label>
+        <div class="radio-group">
+          <label class="radio-label"><input type="radio" name="geschlecht" value="m"> Männlich</label>
+          <label class="radio-label"><input type="radio" name="geschlecht" value="w"> Weiblich</label>
+        </div>
+      </div>
+      <div class="datenschutz-box">
+        <label class="checkbox-label">
+          <input type="checkbox" id="reg-datenschutz">
+          <span>Ich stimme der Verarbeitung der oben angegebenen Daten zum Zweck der Durchführung des Sport- und Spielfestes zu. Die Daten werden ausschließlich für die Veranstaltung verwendet und danach gelöscht.</span>
+        </label>
+      </div>
+      <button class="btn btn-primary" onclick="registerChild()">Kind anmelden</button>
+      <div id="register-msg" class="msg-box" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- Riegenführer Login (QR-Code Scan oder Token-Eingabe) -->
+  <div id="screen-riege-login" class="screen">
+    <div class="card">
+      <button class="back-btn" onclick="showScreen('screen-home')">← Zurück</button>
+      <h2>Riegenführer</h2>
+      <p class="subtitle">Scanne den QR-Code deiner Riege oder gib den Code manuell ein.</p>
+      <div class="form-group">
+        <label>Riegen-Code</label>
+        <input type="text" id="riege-token" placeholder="z.B. RIEGE-A3X9" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()">
+      </div>
+      <button class="btn btn-primary" onclick="loginRiege()">Zur Riege</button>
+      <div id="riege-login-error" class="error-msg" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- Riegenführer: Wettkampf-Eingabe -->
+  <div id="screen-riege" class="screen">
+    <div class="riege-header">
+      <button class="back-btn-white" onclick="showScreen('screen-home')">← Verlassen</button>
+      <div id="riege-header-info">
+        <span id="riege-header-name">Riege A</span>
+        <span id="riege-header-sub">Jahrgang – Geschlecht</span>
+      </div>
+    </div>
+    <div class="riege-body">
+      <div id="riege-kinder-liste"></div>
+    </div>
+  </div>
+
+  <!-- Admin Login -->
+  <div id="screen-admin-login" class="screen">
+    <div class="card">
+      <button class="back-btn" onclick="showScreen('screen-home')">← Zurück</button>
+      <h2>Admin-Bereich</h2>
+      <div class="form-group">
+        <label>Passwort</label>
+        <input type="password" id="admin-pw-input" placeholder="Admin-Passwort">
+      </div>
+      <button class="btn btn-primary" onclick="adminLogin()">Einloggen</button>
+      <div id="admin-login-error" class="error-msg" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- Admin Dashboard -->
+  <div id="screen-admin" class="screen">
+    <div class="admin-header">
+      <h2>Admin</h2>
+      <button class="btn btn-sm btn-outline" onclick="adminLogout()">Abmelden</button>
+    </div>
+    <div class="admin-tabs">
+      <button class="admin-tab active" onclick="adminTab('anmeldungen')">Anmeldungen</button>
+      <button class="admin-tab" onclick="adminTab('riegen')">Riegen</button>
+      <button class="admin-tab" onclick="adminTab('auswertung')">Auswertung</button>
+      <button class="admin-tab" onclick="adminTab('einstellungen')">Einstellungen</button>
+    </div>
+
+    <!-- Tab: Anmeldungen -->
+    <div id="admin-tab-anmeldungen" class="admin-tab-content active">
+      <div class="admin-section-header">
+        <h3>Angemeldete Kinder</h3>
+        <button class="btn btn-sm btn-primary" onclick="loadAdminAnmeldungen()">Aktualisieren</button>
+      </div>
+      <div id="admin-anmeldungen-liste"></div>
+    </div>
+
+    <!-- Tab: Riegen -->
+    <div id="admin-tab-riegen" class="admin-tab-content">
+      <div class="admin-section-header">
+        <h3>Riegen verwalten</h3>
+        <button class="btn btn-sm btn-primary" onclick="autoGenerateRiegen()">Riegen automatisch generieren</button>
+      </div>
+      <div id="riegen-warnungen"></div>
+      <div id="admin-riegen-liste"></div>
+      <!-- Zusammenlegen Modal-Area -->
+      <div id="merge-area" style="display:none" class="merge-area">
+        <h4>Riegen zusammenlegen</h4>
+        <div class="form-group">
+          <label>Riege 1</label>
+          <select id="merge-r1"></select>
+        </div>
+        <div class="form-group">
+          <label>Riege 2</label>
+          <select id="merge-r2"></select>
+        </div>
+        <button class="btn btn-primary" onclick="mergeRiegen()">Zusammenlegen</button>
+        <button class="btn btn-outline" onclick="document.getElementById('merge-area').style.display='none'">Abbrechen</button>
+      </div>
+      <button class="btn btn-outline" style="margin-top:16px" onclick="showMergeArea()">Riegen zusammenlegen</button>
+    </div>
+
+    <!-- Tab: Auswertung -->
+    <div id="admin-tab-auswertung" class="admin-tab-content">
+      <div class="admin-section-header">
+        <h3>Ergebnisse & Punkte</h3>
+        <button class="btn btn-sm btn-primary" onclick="calcAuswertung()">Auswertung berechnen</button>
+      </div>
+      <div id="auswertung-output"></div>
+    </div>
+
+    <!-- Tab: Einstellungen -->
+    <div id="admin-tab-einstellungen" class="admin-tab-content">
+      <h3>Einstellungen</h3>
+      <div class="settings-section">
+        <h4>Passwort ändern</h4>
+        <div class="form-group">
+          <label>Neues Passwort</label>
+          <input type="password" id="new-pw" placeholder="Neues Passwort">
+        </div>
+        <div class="form-group">
+          <label>Wiederholen</label>
+          <input type="password" id="new-pw2" placeholder="Passwort wiederholen">
+        </div>
+        <button class="btn btn-primary" onclick="changePassword()">Passwort ändern</button>
+        <div id="pw-change-msg" class="msg-box" style="display:none"></div>
+      </div>
+      <div class="settings-section">
+        <h4>Mindestgröße Riege</h4>
+        <div class="form-group">
+          <label>Minimum Kinder pro Riege</label>
+          <input type="number" id="min-riege-size" value="6" min="1" max="20">
+        </div>
+        <button class="btn btn-primary" onclick="saveMinRiegeSize()">Speichern</button>
+        <div id="min-size-msg" class="msg-box" style="display:none"></div>
+      </div>
+      <div class="settings-section">
+        <h4>Sprintstrecken je Jahrgang</h4>
+        <div id="sprint-config"></div>
+        <button class="btn btn-primary" onclick="saveSprintConfig()">Sprintstrecken speichern</button>
+        <div id="sprint-config-msg" class="msg-box" style="display:none"></div>
+      </div>
+      <div class="settings-section">
+        <h4>Firebase-Konfiguration zurücksetzen</h4>
+        <button class="btn btn-danger" onclick="resetConfig()">Konfiguration zurücksetzen</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- #app -->
+
+<script src="firebase-config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
