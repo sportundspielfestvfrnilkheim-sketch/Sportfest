@@ -339,22 +339,34 @@ function simpleHash(str) {
 }
 
 // ===== STARTUP =====
+function waitForFirebase(callback, tries) {
+  tries = tries || 0;
+  if (tries > 40) { showScreen('screen-setup'); return; }
+  if (typeof firebase !== 'undefined' && firebase.apps) {
+    callback();
+  } else {
+    setTimeout(function() { waitForFirebase(callback, tries + 1); }, 100);
+  }
+}
+
 window.onload = function() {
-  const cfg = getStoredConfig();
-  if (!cfg || !cfg.apiKey || !cfg.projectId) {
-    showScreen('screen-setup');
-    return;
-  }
-  const ok = initFirebase(cfg);
-  if (!ok) {
-    showScreen('screen-setup');
-    return;
-  }
-  const params = new URLSearchParams(window.location.search);
-  const token = params.get('riege');
-  if (token) { openRiegeByToken(token); return; }
-  showScreen('screen-home');
-  buildSprintConfig();
+  waitForFirebase(function() {
+    const cfg = getStoredConfig();
+    if (!cfg || !cfg.apiKey || !cfg.projectId) {
+      showScreen('screen-setup');
+      return;
+    }
+    const ok = initFirebase(cfg);
+    if (!ok) {
+      showScreen('screen-setup');
+      return;
+    }
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('riege');
+    if (token) { openRiegeByToken(token); return; }
+    showScreen('screen-home');
+    buildSprintConfig();
+  });
 };
 
 // ===== SCREENS =====
