@@ -142,14 +142,14 @@
 <body>
 <div id="app">
 
-  <div id="screen-loading" class="screen active">
+  <div id="screen-loading" class="screen">
     <div class="loading-inner">
       <div class="spinner"></div>
       <p>Sportfest wird geladen…</p>
     </div>
   </div>
 
-  <div id="screen-setup" class="screen">
+  <div id="screen-setup" class="screen active">
     <div class="card" style="margin-top:40px">
       <div class="logo">🏆</div>
       <h1 style="text-align:center">Sportfest einrichten</h1>
@@ -339,35 +339,38 @@ function simpleHash(str) {
 }
 
 // ===== STARTUP =====
-function waitForFirebase(callback, tries) {
-  tries = tries || 0;
-  if (tries > 40) { showScreen('screen-setup'); return; }
-  if (typeof firebase !== 'undefined' && firebase.apps) {
-    callback();
-  } else {
-    setTimeout(function() { waitForFirebase(callback, tries + 1); }, 100);
+// Show setup screen immediately - no loading screen needed
+// If Firebase config exists, try to connect and go to home
+function tryAutoStart() {
+  const cfg = getStoredConfig();
+  if (!cfg || !cfg.apiKey || !cfg.projectId) {
+    showScreen('screen-setup');
+    return;
   }
+  // Config exists - try to init Firebase
+  if (typeof firebase === 'undefined') {
+    // Firebase not loaded yet, try again shortly
+    setTimeout(tryAutoStart, 200);
+    return;
+  }
+  const ok = initFirebase(cfg);
+  if (!ok) {
+    showScreen('screen-setup');
+    return;
+  }
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get('riege');
+  if (token) { openRiegeByToken(token); return; }
+  showScreen('screen-home');
+  buildSprintConfig();
 }
 
-window.onload = function() {
-  waitForFirebase(function() {
-    const cfg = getStoredConfig();
-    if (!cfg || !cfg.apiKey || !cfg.projectId) {
-      showScreen('screen-setup');
-      return;
-    }
-    const ok = initFirebase(cfg);
-    if (!ok) {
-      showScreen('screen-setup');
-      return;
-    }
-    const params = new URLSearchParams(window.location.search);
-    const token = params.get('riege');
-    if (token) { openRiegeByToken(token); return; }
-    showScreen('screen-home');
-    buildSprintConfig();
-  });
-};
+// Start immediately when DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', tryAutoStart);
+} else {
+  tryAutoStart();
+}
 
 // ===== SCREENS =====
 function showScreen(id) {
